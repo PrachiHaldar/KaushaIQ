@@ -1,0 +1,602 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------
+// USER & CORE PROFILES
+// ----------------------------------------------------
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         String    // STUDENT, FACULTY, INDUSTRY, INSTITUTION, ADMIN
+  name         String
+  avatar       String?
+  phone        String?
+  isVerified   Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  studentProfile     StudentProfile?
+  facultyProfile     FacultyProfile?
+  industryProfile    IndustryProfile?
+  institutionProfile InstitutionProfile?
+  notifications      Notification[]
+}
+
+model StudentProfile {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId               String?
+  domain                 Domain?   @relation(fields: [domainId], references: [id])
+  departmentId           String?
+  department             Department? @relation(fields: [departmentId], references: [id])
+  institutionId          String?
+  institution            InstitutionProfile? @relation(fields: [institutionId], references: [id])
+  rollNumber             String?
+  currentYear            Int       @default(4) // 1, 2, 3, 4
+  degree                 String    @default("B.Tech Computer Science & Engineering")
+  targetCareerId         String?
+  targetCareer           CareerPath? @relation(fields: [targetCareerId], references: [id])
+  
+  // Aggregate Readiness Score & Breakdown (0 - 100)
+  readinessScore         Int       @default(61)
+  technicalScore         Int       @default(65)
+  domainScore            Int       @default(60)
+  softSkillsScore        Int       @default(80)
+  projectsScore          Int       @default(55)
+  certificationsScore    Int       @default(50)
+  industryExposureScore  Int       @default(45)
+
+  bio                    String?
+  githubUrl              String?
+  linkedinUrl            String?
+  portfolioUrl           String?
+  passportCode           String    @unique @default(uuid())
+  passportHash           String?
+
+  skills                 StudentSkill[]
+  skillGaps              SkillGap[]
+  assessmentAttempts     AssessmentAttempt[]
+  quizSubmissions        QuizSubmission[]
+  assignmentSubmissions  AssignmentSubmission[]
+  projectSubmissions     ProjectSubmission[]
+  certifications         Certification[]
+  applications           Application[]
+  industryEvaluations    IndustryEvaluation[]
+  skillVerifications     SkillVerification[]
+  recommendations        Recommendation[]
+}
+
+model FacultyProfile {
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId             String?
+  domain               Domain?   @relation(fields: [domainId], references: [id])
+  departmentId         String?
+  department           Department? @relation(fields: [departmentId], references: [id])
+  institutionId        String?
+  institution          InstitutionProfile? @relation(fields: [institutionId], references: [id])
+  designation          String    @default("Professor & Research Lead")
+  experienceYears      Int       @default(12)
+  researchInterests    String?
+  publicationsCount    Int       @default(18)
+  patentsCount         Int       @default(4)
+  fdpCount             Int       @default(8)
+  consultancyCount     Int       @default(5)
+  isVerified           Boolean   @default(true)
+
+  learningModules      LearningModule[]
+  createdProjects      Project[]
+}
+
+model IndustryProfile {
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId             String?
+  domain               Domain?   @relation(fields: [domainId], references: [id])
+  companyName          String
+  companySize          String    @default("500-1000 employees")
+  industryType         String    @default("Technology & AI Solutions")
+  websiteUrl           String?
+  location             String    @default("Bengaluru, India")
+  description          String?
+  verificationStatus   String    @default("VERIFIED") // PENDING, VERIFIED
+
+  opportunities        Opportunity[]
+  industryProjects     Project[]
+  evaluationsGiven     IndustryEvaluation[]
+}
+
+model InstitutionProfile {
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionName      String
+  institutionType      String    @default("National Institute of Technology")
+  code                 String    @unique
+  state                String    @default("Karnataka")
+  city                 String    @default("Surathkal")
+  accreditation        String    @default("NAAC A++ / NIRF Top 15")
+  studentCount         Int       @default(4800)
+  facultyCount         Int       @default(320)
+
+  students             StudentProfile[]
+  facultyMembers       FacultyProfile[]
+  recommendations      Recommendation[]
+}
+
+// ----------------------------------------------------
+// DOMAIN-AGNOSTIC TAXONOMY
+// ----------------------------------------------------
+
+model Domain {
+  id           String    @id @default(uuid())
+  name         String    @unique
+  slug         String    @unique
+  code         String    @unique
+  icon         String    @default("Layers")
+  description  String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  departments      Department[]
+  skills           Skill[]
+  careerPaths      CareerPath[]
+  learningModules  LearningModule[]
+  opportunities    Opportunity[]
+  projects         Project[]
+  students         StudentProfile[]
+  faculty          FacultyProfile[]
+  industry         IndustryProfile[]
+  assessments      Assessment[]
+}
+
+model Department {
+  id         String    @id @default(uuid())
+  name       String
+  code       String
+  domainId   String
+  domain     Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  students   StudentProfile[]
+  faculty    FacultyProfile[]
+}
+
+model SkillCategory {
+  id          String    @id @default(uuid())
+  name        String    @unique // Technical, Domain, Soft Skills, Professional, Research, Leadership, Tools, Problem Solving
+  description String?
+  skills      Skill[]
+}
+
+model Skill {
+  id             String         @id @default(uuid())
+  name           String
+  slug           String         @unique
+  categoryId     String
+  category       SkillCategory  @relation(fields: [categoryId], references: [id])
+  domainId       String
+  domain         Domain         @relation(fields: [domainId], references: [id])
+  description    String?
+  difficulty     String         @default("Intermediate") // Beginner, Intermediate, Advanced
+  requiredLevel  Int            @default(70) // Target baseline 0 - 100
+  isTrending     Boolean        @default(false)
+  demandGrowth   String         @default("+25%")
+  createdAt      DateTime       @default(now())
+
+  studentSkills          StudentSkill[]
+  skillGaps              SkillGap[]
+  careerRequirements     CareerSkillRequirement[]
+  learningModules        LearningModule[]
+  assessments            Assessment[]
+  opportunitySkills      OpportunitySkillRequirement[]
+  skillVerifications     SkillVerification[]
+}
+
+model CareerPath {
+  id            String    @id @default(uuid())
+  name          String
+  slug          String    @unique
+  domainId      String
+  domain        Domain    @relation(fields: [domainId], references: [id])
+  description   String?
+  averageSalary String    @default("₹12-24 LPA")
+  demandLevel   String    @default("Very High")
+
+  targetStudents    StudentProfile[]
+  skillRequirements CareerSkillRequirement[]
+  skillGaps         SkillGap[]
+}
+
+model CareerSkillRequirement {
+  id               String      @id @default(uuid())
+  careerPathId     String
+  careerPath       CareerPath  @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
+  skillId          String
+  skill            Skill       @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  requiredScore    Int         @default(75) // 0 - 100
+  importanceWeight Float       @default(1.0)
+}
+
+// ----------------------------------------------------
+// STUDENT SKILLS & GAP INTELLIGENCE
+// ----------------------------------------------------
+
+model StudentSkill {
+  id                String          @id @default(uuid())
+  studentId         String
+  student           StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId           String
+  skill             Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  currentScore      Int             @default(50) // 0 - 100
+  verificationLevel String          @default("SELF_DECLARED") // SELF_DECLARED, ASSESSED, PROJECT_VERIFIED, FACULTY_VERIFIED, INDUSTRY_VERIFIED
+  verifiedByUserId  String?
+  verifiedAt        DateTime?
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([studentId, skillId])
+}
+
+model SkillGap {
+  id                String          @id @default(uuid())
+  studentId         String
+  student           StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  careerPathId      String
+  careerPath        CareerPath      @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
+  skillId           String
+  skill             Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  currentScore      Int
+  requiredScore     Int
+  gapScore          Int             // requiredScore - currentScore
+  severity          String          // CRITICAL (gap > 25), MODERATE (gap 10-25), STRONG (gap <= 0)
+  recommendedAction String?
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([studentId, careerPathId, skillId])
+}
+
+// ----------------------------------------------------
+// ASSESSMENTS & TESTING
+// ----------------------------------------------------
+
+model Assessment {
+  id              String                @id @default(uuid())
+  title           String
+  domainId        String
+  domain          Domain                @relation(fields: [domainId], references: [id])
+  skillId         String?
+  skill           Skill?                @relation(fields: [skillId], references: [id])
+  difficulty      String                @default("Intermediate")
+  durationMinutes Int                   @default(30)
+  totalQuestions  Int                   @default(10)
+  passingScore    Int                   @default(60)
+  createdAt       DateTime              @default(now())
+
+  questions       AssessmentQuestion[]
+  attempts        AssessmentAttempt[]
+}
+
+model AssessmentQuestion {
+  id            String      @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption String      // 'A', 'B', 'C', 'D'
+  explanation   String?
+  points        Int         @default(10)
+}
+
+model AssessmentAttempt {
+  id            String          @id @default(uuid())
+  studentId     String
+  student       StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assessmentId  String
+  assessment    Assessment      @relation(fields: [assessmentId], references: [id])
+  score         Int
+  totalScore    Int
+  percentage    Float
+  isPassed      Boolean
+  completedAt   DateTime        @default(now())
+}
+
+// ----------------------------------------------------
+// PERSONALIZED LEARNING HUB & RESOURCES
+// ----------------------------------------------------
+
+model LearningModule {
+  id            String             @id @default(uuid())
+  title         String
+  slug          String             @unique
+  domainId      String
+  domain        Domain             @relation(fields: [domainId], references: [id])
+  skillId       String?
+  skill         Skill?             @relation(fields: [skillId], references: [id])
+  level         String             @default("Intermediate") // Beginner, Intermediate, Advanced
+  durationHours Int                @default(12)
+  authorId      String?
+  authorRole    String?            // FACULTY, INDUSTRY
+  overview      String
+  description   String
+  publishedAt   DateTime           @default(now())
+  facultyAuthor FacultyProfile?    @relation(fields: [authorId], references: [id])
+
+  notes         Note[]
+  lectures      Lecture[]
+  quizzes       Quiz[]
+  assignments   Assignment[]
+}
+
+model Note {
+  id              String          @id @default(uuid())
+  moduleId        String
+  module          LearningModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title           String
+  content         String          // Markdown content or full lecture notes
+  fileUrl         String?
+  readTimeMinutes Int             @default(15)
+}
+
+model Lecture {
+  id              String          @id @default(uuid())
+  moduleId        String
+  module          LearningModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title           String
+  videoUrl        String?
+  durationMinutes Int             @default(25)
+  transcript      String?
+  orderIndex      Int             @default(1)
+}
+
+model Quiz {
+  id            String             @id @default(uuid())
+  moduleId      String
+  module        LearningModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title         String
+  passingScore  Int                @default(70)
+
+  questions     QuizQuestion[]
+  submissions   QuizSubmission[]
+}
+
+model QuizQuestion {
+  id            String      @id @default(uuid())
+  quizId        String
+  quiz          Quiz        @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption String      // 'A', 'B', 'C', 'D'
+  explanation   String?
+}
+
+model QuizSubmission {
+  id             String          @id @default(uuid())
+  studentId      String
+  student        StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  quizId         String
+  quiz           Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score          Int
+  totalQuestions Int
+  isPassed       Boolean
+  submittedAt    DateTime        @default(now())
+}
+
+model Assignment {
+  id            String                  @id @default(uuid())
+  moduleId      String
+  module        LearningModule          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title         String
+  instructions  String
+  dueDate       DateTime?
+  maxMarks      Int                     @default(100)
+
+  submissions   AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id                String          @id @default(uuid())
+  studentId         String
+  student           StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignmentId      String
+  assignment        Assignment      @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  submissionUrl     String
+  notes             String?
+  grade             Int?
+  feedback          String?
+  evaluatedByUserId String?
+  submittedAt       DateTime        @default(now())
+  evaluatedAt       DateTime?
+}
+
+// ----------------------------------------------------
+// INDUSTRY CHALLENGES & PROJECTS
+// ----------------------------------------------------
+
+model Project {
+  id                  String               @id @default(uuid())
+  title               String
+  slug                String               @unique
+  domainId            String
+  domain              Domain               @relation(fields: [domainId], references: [id])
+  industryId          String?
+  industry            IndustryProfile?     @relation(fields: [industryId], references: [id])
+  facultyId           String?
+  faculty             FacultyProfile?      @relation(fields: [facultyId], references: [id])
+  difficulty          String               @default("Advanced")
+  durationWeeks       Int                  @default(4)
+  stipend             String?              @default("₹15,000 / completion reward")
+  problemStatement    String
+  datasetUrl          String?
+  deliverables        String
+  evaluationCriteria  String
+  isVerifiedChallenge Boolean              @default(true)
+  status              String               @default("ACTIVE") // ACTIVE, COMPLETED, ARCHIVED
+  createdAt           DateTime             @default(now())
+
+  submissions         ProjectSubmission[]
+}
+
+model ProjectSubmission {
+  id                String          @id @default(uuid())
+  studentId         String
+  student           StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  projectId         String
+  project           Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repoUrl           String
+  liveDemoUrl       String?
+  documentationUrl  String?
+  submissionNotes   String?
+  status            String          @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, EVALUATED
+  grade             Float?          // e.g. 4.7 out of 5.0
+  mentorFeedback    String?
+  evaluatedByUserId String?
+  submittedAt       DateTime        @default(now())
+  evaluatedAt       DateTime?
+
+  evaluations       IndustryEvaluation[]
+}
+
+// ----------------------------------------------------
+// OPPORTUNITY HUB & APPLICATIONS
+// ----------------------------------------------------
+
+model Opportunity {
+  id                  String                          @id @default(uuid())
+  title               String
+  slug                String                          @unique
+  type                String                          @default("INTERNSHIP") // INTERNSHIP, JOB, APPRENTICESHIP, PROJECT, TRAINING, MENTORSHIP
+  organizationId      String
+  organization        IndustryProfile                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domainId            String
+  domain              Domain                          @relation(fields: [domainId], references: [id])
+  location            String                          @default("Bengaluru / Remote")
+  locationType        String                          @default("HYBRID") // REMOTE, HYBRID, ON_SITE
+  duration            String                          @default("6 Months")
+  stipendOrSalary     String                          @default("₹35,000 / month")
+  minReadinessScore   Int                             @default(70)
+  eligibilityCriteria String                          @default("B.Tech / MCA 3rd & 4th year students with foundational AI/ML and SQL.")
+  description         String
+  responsibilities    String
+  requirements        String
+  deadline            DateTime?
+  openingsCount       Int                             @default(5)
+  status              String                          @default("OPEN") // OPEN, CLOSED
+  createdAt           DateTime                        @default(now())
+
+  skillRequirements   OpportunitySkillRequirement[]
+  applications        Application[]
+}
+
+model OpportunitySkillRequirement {
+  id             String       @id @default(uuid())
+  opportunityId  String
+  opportunity    Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  skillId        String
+  skill          Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  minScore       Int          @default(65)
+  isMandatory    Boolean      @default(true)
+}
+
+model Application {
+  id                      String          @id @default(uuid())
+  studentId               String
+  student                 StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  opportunityId           String
+  opportunity             Opportunity     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  status                  String          @default("APPLIED") // APPLIED, UNDER_REVIEW, SHORTLISTED, INTERVIEW, SELECTED, REJECTED
+  matchScoreAtApplication Int             @default(92)
+  coverNote               String?
+  appliedAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  @@unique([studentId, opportunityId])
+}
+
+// ----------------------------------------------------
+// CREDENTIALS, EVALUATIONS & PASSPORT
+// ----------------------------------------------------
+
+model Certification {
+  id                 String          @id @default(uuid())
+  studentId          String
+  student            StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title              String
+  issuer             String
+  issueDate          DateTime        @default(now())
+  credentialUrl      String?
+  verificationStatus String          @default("VERIFIED") // PENDING, VERIFIED
+}
+
+model IndustryEvaluation {
+  id                  String             @id @default(uuid())
+  industryId          String
+  industry            IndustryProfile    @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  studentId           String
+  student             StudentProfile     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  projectSubmissionId String?
+  projectSubmission   ProjectSubmission? @relation(fields: [projectSubmissionId], references: [id])
+  rating              Float              @default(4.7) // Out of 5.0
+  technicalCompetency Int                @default(90)  // Out of 100
+  problemSolving      Int                @default(88)
+  communication       Int                @default(85)
+  professionalConduct Int                @default(95)
+  detailedFeedback    String
+  verifiedSkills      String             // Comma-separated or JSON string of skills verified
+  createdAt           DateTime           @default(now())
+}
+
+model SkillVerification {
+  id               String          @id @default(uuid())
+  studentId        String
+  student          StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId          String
+  skill            Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  verifierId       String
+  verifierRole     String          // FACULTY, INDUSTRY, ASSESSMENT
+  verificationType String          // PROJECT_VERIFIED, FACULTY_VERIFIED, INDUSTRY_VERIFIED, ASSESSED
+  proofUrl         String?
+  remarks          String?
+  createdAt        DateTime        @default(now())
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String    @default("INFO") // INFO, SUCCESS, WARNING, OPPORTUNITY, VERIFICATION
+  read      Boolean   @default(false)
+  link      String?
+  createdAt DateTime  @default(now())
+}
+
+model Recommendation {
+  id              String              @id @default(uuid())
+  institutionId   String?
+  institution     InstitutionProfile? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  studentId       String?
+  student         StudentProfile?     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title           String
+  category        String              // BOOTCAMP, FACULTY_UPSKILLING, INDUSTRY_LAB, CURRICULUM_UPDATE
+  reason          String
+  suggestedAction String
+  impactLevel     String              @default("HIGH") // HIGH, MEDIUM, LOW
+  createdAt       DateTime            @default(now())
+}

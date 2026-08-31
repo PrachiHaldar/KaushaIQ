@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#070A12] text-slate-100 font-sans min-h-screen overflow-x-hidden;
+    background-image: 
+      radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.04) 0%, transparent 60%);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-white;
+  }
+}
+
+@layer components {
+  /* Glassmorphism Styles */
+  .glass-panel {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-2xl rounded-2xl;
+  }
+
+  .glass-panel-hover {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 hover:border-slate-700/80 transition-all duration-300 hover:shadow-indigo-500/10 hover:shadow-2xl rounded-2xl;
+  }
+
+  .glass-card {
+    @apply bg-slate-900/40 backdrop-blur-md border border-slate-800/60 hover:border-brand-500/40 transition-all duration-300 rounded-xl;
+  }
+
+  .glass-input {
+    @apply bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all;
+  }
+
+  .glass-button-primary {
+    @apply bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  .glass-button-secondary {
+    @apply bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/70 text-slate-200 font-medium px-5 py-2.5 rounded-xl hover:text-white transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  .glass-button-outline {
+    @apply border border-brand-500/50 hover:bg-brand-500/10 text-brand-400 hover:text-brand-300 font-medium px-5 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  /* Gradient Text Variants */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-brand-300;
+  }
+
+  .gradient-text-brand {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-400 via-indigo-300 to-cyan-400;
+  }
+
+  .gradient-text-cyan {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400;
+  }
+
+  .gradient-text-amber {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-rose-400;
+  }
+
+  /* Badge Styles */
+  .badge-verified-industry {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30;
+  }
+
+  .badge-verified-project {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30;
+  }
+
+  .badge-verified-faculty {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/30;
+  }
+
+  .badge-assessed {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30;
+  }
+
+  .badge-self-declared {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-600/30;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #070A12;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Glow Effects */
+.glow-brand {
+  box-shadow: 0 0 40px -10px rgba(99, 102, 241, 0.35);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 40px -10px rgba(6, 182, 212, 0.3);
+}
