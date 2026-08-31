@@ -131,31 +131,83 @@ const register = async (req, res, next) => {
 
     // Create corresponding profile based on role
     if (newUser.role === 'STUDENT') {
-      await prisma.studentProfile.create({
+      let assignedDomainId = domainId || null;
+      let assignedCareerId = null;
+
+      if (!assignedDomainId) {
+        const defaultDomain = (await prisma.domain.findFirst({ where: { slug: 'cs-ai' } })) || (await prisma.domain.findFirst());
+        if (defaultDomain) {
+          assignedDomainId = defaultDomain.id;
+        }
+      }
+
+      if (assignedDomainId) {
+        const defaultCareer = await prisma.careerPath.findFirst({ where: { domainId: assignedDomainId } });
+        if (defaultCareer) {
+          assignedCareerId = defaultCareer.id;
+        }
+      }
+
+      const newStudentProfile = await prisma.studentProfile.create({
         data: {
           userId: newUser.id,
-          domainId: domainId || null,
+          domainId: assignedDomainId,
           departmentId: departmentId || null,
           institutionId: institutionId || null,
-          readinessScore: 60,
+          targetCareerId: assignedCareerId,
+          readinessScore: 65,
+          technicalScore: 68,
+          domainScore: 64,
+          softSkillsScore: 78,
+          projectsScore: 60,
+          certificationsScore: 55,
+          industryExposureScore: 50,
           passportCode: `KSH-2026-${newUser.id.slice(0, 8).toUpperCase()}`
         }
       });
+
+      // Initialize baseline skills for the student
+      if (assignedDomainId) {
+        const initialSkills = await prisma.skill.findMany({
+          where: { domainId: assignedDomainId },
+          take: 4
+        });
+        for (const sk of initialSkills) {
+          await prisma.studentSkill.create({
+            data: {
+              studentId: newStudentProfile.id,
+              skillId: sk.id,
+              currentScore: 65,
+              verificationLevel: 'ASSESSED'
+            }
+          });
+        }
+      }
     } else if (newUser.role === 'FACULTY') {
+      let assignedDomainId = domainId || null;
+      if (!assignedDomainId) {
+        const defaultDomain = await prisma.domain.findFirst();
+        if (defaultDomain) assignedDomainId = defaultDomain.id;
+      }
       await prisma.facultyProfile.create({
         data: {
           userId: newUser.id,
-          domainId: domainId || null,
+          domainId: assignedDomainId,
           departmentId: departmentId || null,
           institutionId: institutionId || null
         }
       });
     } else if (newUser.role === 'INDUSTRY') {
+      let assignedDomainId = domainId || null;
+      if (!assignedDomainId) {
+        const defaultDomain = await prisma.domain.findFirst();
+        if (defaultDomain) assignedDomainId = defaultDomain.id;
+      }
       await prisma.industryProfile.create({
         data: {
           userId: newUser.id,
           companyName: name,
-          domainId: domainId || null
+          domainId: assignedDomainId
         }
       });
     } else if (newUser.role === 'INSTITUTION') {

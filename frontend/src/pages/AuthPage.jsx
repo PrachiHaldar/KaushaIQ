@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { Sparkles, LogIn, UserPlus, GraduationCap, Building2, Landmark, User, ShieldCheck, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  LogIn,
+  UserPlus,
+  GraduationCap,
+  Building2,
+  Landmark,
+  User,
+  ShieldCheck,
+  Loader2,
+  Eye,
+  EyeOff,
+  KeyRound
+} from 'lucide-react';
 
 export default function AuthPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') === 'register' ? 'register' : 'login';
   const [isRegister, setIsRegister] = useState(initialMode === 'register');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('STUDENT');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,18 +32,63 @@ export default function AuthPage() {
   const { addToast } = useNotification();
   const navigate = useNavigate();
 
+  // Keep state in sync with URL mode query parameter
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'register') {
+      setIsRegister(true);
+    } else if (mode === 'login') {
+      setIsRegister(false);
+    }
+  }, [searchParams]);
+
+  const handleModeSwitch = (registerMode) => {
+    setIsRegister(registerMode);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('mode', registerMode ? 'register' : 'login');
+      return next;
+    });
+  };
+
+  const handleQuickFill = (demoEmail, demoRole) => {
+    setEmail(demoEmail);
+    setPassword('demo123');
+    setRole(demoRole);
+    addToast({
+      title: 'Credentials Loaded',
+      message: `Filled credentials for ${demoRole} (${demoEmail}). Click Sign In to proceed.`,
+      type: 'info'
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    const redirectUrl = searchParams.get('redirect');
+
     try {
       if (isRegister) {
-        await register({ name, email, password, role });
+        const res = await register({ name, email, password, role });
         addToast({ title: 'Welcome to KaushIQ!', message: 'Account registered successfully.', type: 'success' });
+        const userRole = res?.user?.role || role;
+        if (redirectUrl) navigate(redirectUrl);
+        else if (userRole === 'FACULTY') navigate('/faculty/dashboard');
+        else if (userRole === 'INDUSTRY') navigate('/industry/dashboard');
+        else if (userRole === 'INSTITUTION') navigate('/institution/dashboard');
+        else if (userRole === 'ADMIN') navigate('/admin/dashboard');
+        else navigate('/dashboard');
       } else {
-        await login(email, password);
+        const res = await login(email, password);
         addToast({ title: 'Welcome Back!', message: 'Logged in successfully.', type: 'success' });
+        const userRole = res?.user?.role || 'STUDENT';
+        if (redirectUrl) navigate(redirectUrl);
+        else if (userRole === 'FACULTY') navigate('/faculty/dashboard');
+        else if (userRole === 'INDUSTRY') navigate('/industry/dashboard');
+        else if (userRole === 'INSTITUTION') navigate('/institution/dashboard');
+        else if (userRole === 'ADMIN') navigate('/admin/dashboard');
+        else navigate('/dashboard');
       }
-      navigate('/dashboard');
     } catch (err) {
       addToast({ title: 'Authentication Error', message: err.message, type: 'error' });
     } finally {
@@ -124,7 +183,7 @@ export default function AuthPage() {
         <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800 text-xs">
           <button
             type="button"
-            onClick={() => setIsRegister(false)}
+            onClick={() => handleModeSwitch(false)}
             className={`w-1/2 py-2 rounded-lg font-bold transition-all ${
               !isRegister ? 'bg-brand-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
@@ -133,7 +192,7 @@ export default function AuthPage() {
           </button>
           <button
             type="button"
-            onClick={() => setIsRegister(true)}
+            onClick={() => handleModeSwitch(true)}
             className={`w-1/2 py-2 rounded-lg font-bold transition-all ${
               isRegister ? 'bg-brand-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
@@ -141,6 +200,45 @@ export default function AuthPage() {
             Register
           </button>
         </div>
+
+        {!isRegister && (
+          <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 space-y-1.5 text-[11px]">
+            <div className="flex items-center gap-1 text-slate-300 font-semibold">
+              <KeyRound className="w-3.5 h-3.5 text-brand-400" />
+              <span>Quick-Fill Seeded Demo Credentials (Password: <code className="text-cyan-300">demo123</code>):</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => handleQuickFill('rahul.student@kaushiq.edu', 'STUDENT')}
+                className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px]"
+              >
+                Student (Rahul)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('ananya.faculty@kaushiq.edu', 'FACULTY')}
+                className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px]"
+              >
+                Faculty (Dr. Ananya)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('technova.industry@kaushiq.com', 'INDUSTRY')}
+                className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px]"
+              >
+                Industry (TechNova)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('admin@nit.demo.edu', 'INSTITUTION')}
+                className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[10px]"
+              >
+                Institution (NIT)
+              </button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {isRegister && (
@@ -187,20 +285,29 @@ export default function AuthPage() {
 
           <div>
             <label className="block text-slate-300 font-semibold mb-1">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="glass-input w-full"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="glass-input w-full pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="glass-button-primary w-full py-3 text-sm mt-2"
+            className="glass-button-primary w-full py-3 text-sm mt-2 flex items-center justify-center gap-2"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -219,3 +326,4 @@ export default function AuthPage() {
     </div>
   );
 }
+
